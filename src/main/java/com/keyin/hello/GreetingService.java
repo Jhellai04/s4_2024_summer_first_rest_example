@@ -2,9 +2,10 @@ package com.keyin.hello;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 
 @Service
 public class GreetingService {
@@ -17,14 +18,13 @@ public class GreetingService {
     public Greeting getGreeting(long index) {
         Optional<Greeting> result = greetingRepository.findById(index);
 
-        if (result.isPresent()) {
-            return result.get();
-        }
+        return result.orElse(null);
 
-        return null;
     }
 
     public Greeting createGreeting(Greeting newGreeting) {
+        newGreeting.setId(0);
+
         if (newGreeting.getLanguages() == null) {
             Language english = languageRepository.findByName("English");
 
@@ -33,18 +33,26 @@ public class GreetingService {
                 languageRepository.save(english);
             }
 
-            ArrayList<Language> languageArrayList = new ArrayList<Language>();
+            ArrayList<Language> languageArrayList = new ArrayList<>();
             languageArrayList.add(english);
 
             newGreeting.setLanguages(languageArrayList);
         } else {
+            ArrayList<Language> languageArrayList = new ArrayList<>();
             for (Language language : newGreeting.getLanguages()) {
                 Language langInDB = languageRepository.findByName(language.getName());
 
                 if (langInDB == null) {
                     language = languageRepository.save(language);
+                    languageArrayList.add(language);
+                } else {
+                    language.setId(0);
+                    language = langInDB;
+                    languageArrayList.add(language);
                 }
+
             }
+            newGreeting.setLanguages(languageArrayList);
         }
 
         return greetingRepository.save(newGreeting);
@@ -59,7 +67,22 @@ public class GreetingService {
 
         greetingToUpdate.setName(updatedGreeting.getName());
         greetingToUpdate.setGreeting(updatedGreeting.getGreeting());
-        greetingToUpdate.setLanguages(updatedGreeting.getLanguages());
+
+        ArrayList<Language> languageArrayList = new ArrayList<>();
+        for (Language language : updatedGreeting.getLanguages()) {
+            Language langInDB = languageRepository.findByName(language.getName());
+
+            if (langInDB == null) {
+                language.setId(0);
+                language = languageRepository.save(language);
+                languageArrayList.add(language);
+            } else {
+                language = langInDB;
+                languageArrayList.add(language);
+            }
+        }
+
+        greetingToUpdate.setLanguages(languageArrayList);
 
         return greetingRepository.save(greetingToUpdate);
     }
